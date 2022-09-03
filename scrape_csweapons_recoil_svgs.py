@@ -3,7 +3,6 @@
 from pathlib import Path
 import re
 from time import sleep
-from selenium import webdriver
 from bs4 import BeautifulSoup
 
 URL_REGULAR = r'https://www.csweapons.com/recoil?weapons=Desert%20Eagle,R8%20Revolver,Dual%20Berettas,Five-Seven,Glock-18,P2000,USP-S,P250,CZ75-Auto,Tec-9,MAG-7,Nova,Sawed-Off,XM1014,PP-Bizon,MAC-10,MP7,MP5-SD,MP9,P90,UMP-45,AK-47,AUG,FAMAS,Galil%20AR,M4A4,M4A1-S,SG%20553,M249,Negev,AWP,G3SG1,SCAR-20,SSG%2008&shots=150'
@@ -15,14 +14,11 @@ _DRIVER = None
 def lazy_driver():
     global _DRIVER
     if not _DRIVER:
-        _DRIVER = init_silent_driver()
+        from selenium import webdriver
+        options = webdriver.FirefoxOptions()
+        options.headless = True
+        _DRIVER = webdriver.Firefox(options=options)
     return _DRIVER
-
-
-def init_silent_driver() -> webdriver.Firefox:
-    options = webdriver.FirefoxOptions()
-    options.headless = True
-    return webdriver.Firefox(options=options)
 
 
 def read_or_download(cached_file: Path | str, url: str) -> str:
@@ -33,7 +29,8 @@ def read_or_download(cached_file: Path | str, url: str) -> str:
         print(f'+++ Downloading {url}')
         driver = lazy_driver()
         driver.get(url)
-        sleep(5)
+        print('Waiting 15 seconds for all the patterns to load...')
+        sleep(15)
         with open(cached_path, "w") as f:
             f.write(driver.page_source)
         return driver.page_source
