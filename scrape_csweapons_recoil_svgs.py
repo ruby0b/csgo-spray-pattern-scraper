@@ -78,8 +78,9 @@ def spray_to_csv(spray: list) -> str:
 
 
 def all_sprays_to_lua(sprays: dict[str, list]) -> str:
+    sprays = sorted(sprays.items(), key=lambda kv: kv[0])
     lua = ''
-    for name, s in sprays.items():
+    for name, s in sprays:
         s_lua = spray_to_lua(s)
         lua += f'{name.replace(" ", "_").replace("-", "")} = {s_lua}\n'
     return lua
