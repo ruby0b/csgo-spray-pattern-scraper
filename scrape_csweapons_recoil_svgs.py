@@ -77,6 +77,23 @@ def spray_to_csv(spray: list) -> str:
     return csv
 
 
+def all_sprays_to_lua(sprays: dict[str, list]) -> str:
+    lua = ''
+    for name, s in sprays.items():
+        s_lua = spray_to_lua(s)
+        lua += f'{name.replace(" ", "_").replace("-", "")} = {s_lua}\n'
+    return lua
+
+
+def spray_to_lua(spray: list) -> str:
+    lua = '{'
+    for s in spray:
+        # {pitch,yaw}
+        lua += f'{{{s[0]:.3f},{s[1]:.3f}}},'
+    lua += '}'
+    return lua
+
+
 def main():
     html_regular = read_or_download('csweapons_com_regular.html', URL_REGULAR)
     html_altfire = read_or_download('csweapons_com_altfire.html', URL_ALTFIRE)
@@ -90,8 +107,10 @@ def main():
     for name, spray in sprays.items():
         path = out / (name.replace(' ', '_') + '.csv')
         csv = spray_to_csv(spray)
-        with open(path, 'w') as f:
-            f.write(csv)
+        path.write_text(csv)
+    lua = all_sprays_to_lua(sprays)
+    lua_path = out / '_all_sprays_as_lua_tables.lua'
+    lua_path.write_text(lua)
 
 
 if __name__ == '__main__':
