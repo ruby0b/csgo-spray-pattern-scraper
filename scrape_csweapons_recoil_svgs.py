@@ -48,8 +48,17 @@ def get_spray_patterns(soup: BeautifulSoup):
         print(d.text)
         spray = get_spray_pattern_from_div(d)
         if not spray:
-            continue
-        name = re.match(r'\s*(.*?)\s*\d+/.*', d.text).group(1)
+            if m := re.match(r'.*?(\d+)\s*±\s*(\d+).*?(\d+)\s*±\s*(\d+).*', d.text):
+                pitch_base = - to_cs_angle(m.group(1))
+                pitch_variance = to_cs_angle(m.group(2))
+                yaw_base = - to_cs_angle(m.group(3))  # always 0 anyway
+                yaw_variance = to_cs_angle(m.group(4))
+                spray = {'Pitch': {'Base': pitch_base, 'Variance': pitch_variance},
+                         'Yaw': {'Base': yaw_base, 'Variance': yaw_variance}}
+            else:
+                print("??? Did not recognize the pattern")
+                continue
+        name = re.match(r'\s*(.*?)\s*(\d+/|No fixed).*', d.text).group(1)
         sprays[name] = spray
     return sprays
 
@@ -69,6 +78,10 @@ def to_cs_angle(x):
     return 12 * (float(x) / 60)
 
 
+def is_fixed_spray_pattern(spray: dict | list) -> bool:
+    return isinstance(spray, list)
+
+
 def spray_to_csv(spray: list) -> str:
     csv = ''
     for s in spray:
@@ -81,7 +94,11 @@ def all_sprays_to_lua(sprays: dict[str, list]) -> str:
     sprays = sorted(sprays.items(), key=lambda kv: kv[0])
     lua = ''
     for name, s in sprays:
-        s_lua = spray_to_lua(s)
+        if is_fixed_spray_pattern(s):
+            s_lua = spray_to_lua(s)
+        else:
+            s_lua = f"{{Pitch = {{Base = {s['Pitch']['Base']:.3f}, Variance = {s['Pitch']['Variance']:.3f}}}," \
+                    f" Yaw = {{Base = {s['Yaw']['Base']:.3f}, Variance = {s['Yaw']['Variance']:.3f}}}}}"
         lua += f'{name.replace(" ", "_").replace("-", "")} = {s_lua}\n'
     return lua
 
@@ -106,9 +123,10 @@ def main():
     out = Path('out/')
     out.mkdir(exist_ok=True)
     for name, spray in sprays.items():
-        path = out / (name.replace(' ', '_') + '.csv')
-        csv = spray_to_csv(spray)
-        path.write_text(csv)
+        if is_fixed_spray_pattern(spray):
+            path = out / (name.replace(' ', '_') + '.csv')
+            csv = spray_to_csv(spray)
+            path.write_text(csv)
     lua = all_sprays_to_lua(sprays)
     lua_path = out / '_all_sprays_as_lua_tables.lua'
     lua_path.write_text(lua)
